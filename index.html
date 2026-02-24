@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Gestor de Funcionário</title>
+<title>Controle de Funcionários</title>
 <style>
 body {
     font-family: Arial;
@@ -13,17 +13,31 @@ body {
     background: white;
     padding: 20px;
     border-radius: 10px;
-    max-width: 700px;
+    max-width: 900px;
     margin: auto;
+    display: flex;
+    gap: 20px;
+}
+.lista {
+    width: 30%;
+    border-right: 1px solid #ddd;
+    padding-right: 10px;
+}
+.lista button {
+    width: 100%;
+    margin-bottom: 5px;
+}
+.detalhes {
+    width: 70%;
 }
 button {
-    padding: 8px 12px;
-    margin: 5px 0;
+    padding: 8px;
     cursor: pointer;
 }
 input {
     padding: 6px;
-    margin: 5px 0;
+    width: 100%;
+    margin-bottom: 5px;
 }
 .registro {
     border-bottom: 1px solid #ddd;
@@ -33,80 +47,90 @@ input {
     font-size: 20px;
     font-weight: bold;
 }
-.positivo { color: green; }
 .negativo { color: red; }
+.positivo { color: green; }
 .zero { color: black; }
 </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Controle de Vale / Funcionário</h2>
 
-    <input type="text" id="nome" placeholder="Nome do Funcionário">
-    <button onclick="criarFuncionario()">Criar Funcionário</button>
-
+<div class="lista">
+    <h3>Funcionários</h3>
+    <input type="text" id="nome" placeholder="Novo Funcionário">
+    <button onclick="criarFuncionario()">Criar</button>
     <hr>
+    <div id="listaFuncionarios"></div>
+</div>
 
-    <div id="areaFuncionario" style="display:none;">
-        <h3 id="nomeFuncionario"></h3>
-        <div class="saldo" id="saldo"></div>
+<div class="detalhes" id="areaFuncionario" style="display:none;">
+    <h3 id="nomeFuncionario"></h3>
+    <div class="saldo" id="saldo"></div>
 
-        <button onclick="adicionarVale()">Vale / Adiantamento</button>
-        <button onclick="registrarPagamento()">Registrar Pagamento</button>
-        <button onclick="zerarConta()">Zerar Conta</button>
+    <button onclick="adicionarVale()">Vale / Adiantamento</button>
+    <button onclick="registrarPagamento()">Registrar Pagamento</button>
+    <button onclick="zerarConta()">Zerar Conta</button>
 
-        <h4>Histórico Individual</h4>
-        <div id="historico"></div>
-    </div>
+    <h4>Histórico Individual</h4>
+    <div id="historico"></div>
+</div>
+
 </div>
 
 <script>
-let funcionario = JSON.parse(localStorage.getItem("funcionario")) || null;
+let funcionarios = JSON.parse(localStorage.getItem("funcionarios")) || [];
+let funcionarioAtual = null;
 
 function salvar() {
-    localStorage.setItem("funcionario", JSON.stringify(funcionario));
+    localStorage.setItem("funcionarios", JSON.stringify(funcionarios));
 }
 
 function criarFuncionario() {
     const nome = document.getElementById("nome").value;
     if (!nome) return alert("Digite o nome");
 
-    funcionario = {
+    funcionarios.push({
         nome: nome,
         movimentacoes: []
-    };
+    });
 
+    document.getElementById("nome").value = "";
     salvar();
-    render();
+    renderLista();
+}
+
+function selecionarFuncionario(index) {
+    funcionarioAtual = index;
+    renderDetalhes();
 }
 
 function adicionarVale() {
-    const valor = parseFloat(prompt("Digite o valor do vale / adiantamento:"));
+    const valor = parseFloat(prompt("Digite o valor do vale:"));
     if (!valor || valor <= 0) return;
 
-    funcionario.movimentacoes.push({
+    funcionarios[funcionarioAtual].movimentacoes.push({
         tipo: "Vale / Adiantamento",
         valor: valor,
         data: new Date().toLocaleDateString()
     });
 
     salvar();
-    render();
+    renderDetalhes();
 }
 
 function registrarPagamento() {
     const valor = parseFloat(prompt("Digite o valor do pagamento:"));
     if (!valor || valor <= 0) return;
 
-    funcionario.movimentacoes.push({
+    funcionarios[funcionarioAtual].movimentacoes.push({
         tipo: "Pagamento",
         valor: -valor,
         data: new Date().toLocaleDateString()
     });
 
     salvar();
-    render();
+    renderDetalhes();
 }
 
 function zerarConta() {
@@ -120,45 +144,58 @@ function zerarConta() {
         return;
     }
 
-    funcionario.movimentacoes.push({
+    funcionarios[funcionarioAtual].movimentacoes.push({
         tipo: "Quitação Automática",
         valor: -saldo,
         data: new Date().toLocaleDateString()
     });
 
     salvar();
-    render();
+    renderDetalhes();
 }
 
 function excluirRegistro(index) {
     if (!confirm("Deseja excluir este registro?")) return;
-    funcionario.movimentacoes.splice(index, 1);
+    funcionarios[funcionarioAtual].movimentacoes.splice(index, 1);
     salvar();
-    render();
+    renderDetalhes();
 }
 
 function calcularSaldo() {
-    return funcionario.movimentacoes.reduce((total, mov) => total + mov.valor, 0);
+    return funcionarios[funcionarioAtual].movimentacoes
+        .reduce((total, mov) => total + mov.valor, 0);
 }
 
-function render() {
-    if (!funcionario) return;
+function renderLista() {
+    const listaDiv = document.getElementById("listaFuncionarios");
+    listaDiv.innerHTML = "";
+
+    funcionarios.forEach((func, index) => {
+        const btn = document.createElement("button");
+        btn.innerText = func.nome;
+        btn.onclick = () => selecionarFuncionario(index);
+        listaDiv.appendChild(btn);
+    });
+}
+
+function renderDetalhes() {
+    if (funcionarioAtual === null) return;
 
     document.getElementById("areaFuncionario").style.display = "block";
-    document.getElementById("nomeFuncionario").innerText = funcionario.nome;
+    document.getElementById("nomeFuncionario").innerText = funcionarios[funcionarioAtual].nome;
 
     const saldo = calcularSaldo();
     const saldoDiv = document.getElementById("saldo");
 
     saldoDiv.innerText = "Saldo Atual: R$ " + saldo.toFixed(2);
 
-    saldoDiv.className = "saldo " + 
+    saldoDiv.className = "saldo " +
         (saldo > 0 ? "negativo" : saldo < 0 ? "positivo" : "zero");
 
     const historicoDiv = document.getElementById("historico");
     historicoDiv.innerHTML = "";
 
-    funcionario.movimentacoes.forEach((mov, index) => {
+    funcionarios[funcionarioAtual].movimentacoes.forEach((mov, index) => {
         const div = document.createElement("div");
         div.className = "registro";
         div.innerHTML = `
@@ -169,7 +206,7 @@ function render() {
     });
 }
 
-if (funcionario) render();
+renderLista();
 </script>
 
 </body>
