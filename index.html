@@ -1,221 +1,175 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gestor Fora do radar</title>
-
+<title>Gestor de Funcionários</title>
 <style>
-body{
-font-family:Arial;
-background:#f4f6f9;
-padding:20px;
-margin:0;
+body {
+    font-family: Arial;
+    background: #f4f4f4;
+    padding: 20px;
 }
-
-h1{
-text-align:center;
+.container {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 700px;
+    margin: auto;
 }
-
-.card{
-background:#fff;
-padding:15px;
-margin-bottom:20px;
-border-radius:10px;
-box-shadow:0 5px 15px rgba(0,0,0,0.1);
+button {
+    padding: 8px 12px;
+    margin: 5px 0;
+    cursor: pointer;
 }
-
-input,select,button{
-padding:8px;
-margin:5px 0;
-width:100%;
+input {
+    padding: 6px;
+    margin: 5px 0;
 }
-
-button{
-background:#007bff;
-color:#fff;
-border:none;
-border-radius:5px;
-cursor:pointer;
+.registro {
+    border-bottom: 1px solid #ddd;
+    padding: 5px 0;
 }
-
-button:hover{
-opacity:0.9;
+.saldo {
+    font-size: 20px;
+    font-weight: bold;
 }
-
-.delete-btn{
-background:red;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-font-size:14px;
-}
-
-th,td{
-border-bottom:1px solid #ddd;
-padding:8px;
-text-align:center;
-}
-
-th{
-background:#007bff;
-color:white;
-}
+.positivo { color: green; }
+.negativo { color: red; }
+.zero { color: black; }
 </style>
 </head>
 <body>
 
-<h1>Gestor de Funcionários</h1>
+<div class="container">
+    <h2>Gestor de Funcionário</h2>
 
-<div class="card">
-<h3>Cadastrar Funcionário</h3>
-<input type="text" id="nomeFuncionario" placeholder="Nome">
-<button onclick="addFuncionario()">Adicionar</button>
-</div>
+    <input type="text" id="nome" placeholder="Nome do Funcionário">
+    <button onclick="criarFuncionario()">Criar Funcionário</button>
 
-<div class="card">
-<h3>Registrar Movimento</h3>
-<select id="funcionario"></select>
-<select id="tipo">
-<option value="Vale">Vale Dinheiro</option>
-<option value="Consumo">Consumo Interno</option>
-<option value="Adiantamento">Adiantamento</option>
-</select>
-<input type="number" id="valor" placeholder="Valor">
-<input type="date" id="data">
-<button onclick="addRegistro()">Registrar</button>
-</div>
+    <hr>
 
-<div class="card">
-<h3>Relatório Individual</h3>
-<select id="relatorioFuncionario" onchange="gerarRelatorio()"></select>
-<p id="relatorioResultado"></p>
-</div>
+    <div id="areaFuncionario" style="display:none;">
+        <h3 id="nomeFuncionario"></h3>
+        <div class="saldo" id="saldo"></div>
 
-<div class="card">
-<h3>Registros</h3>
-<table>
-<thead>
-<tr>
-<th>Funcionário</th>
-<th>Tipo</th>
-<th>Valor</th>
-<th>Data</th>
-<th>Ação</th>
-</tr>
-</thead>
-<tbody id="tabela"></tbody>
-</table>
+        <button onclick="adicionarComissao()">Adicionar Comissão</button>
+        <button onclick="registrarPagamento()">Registrar Pagamento</button>
+        <button onclick="zerarConta()">Zerar Conta</button>
+
+        <h4>Histórico</h4>
+        <div id="historico"></div>
+    </div>
 </div>
 
 <script>
+let funcionario = JSON.parse(localStorage.getItem("funcionario")) || null;
 
-let funcionarios = JSON.parse(localStorage.getItem("funcionarios")) || [];
-let registros = JSON.parse(localStorage.getItem("registros")) || [];
-
-function salvar(){
-localStorage.setItem("funcionarios",JSON.stringify(funcionarios));
-localStorage.setItem("registros",JSON.stringify(registros));
+function salvar() {
+    localStorage.setItem("funcionario", JSON.stringify(funcionario));
 }
 
-function atualizarSelects(){
-let select1 = document.getElementById("funcionario");
-let select2 = document.getElementById("relatorioFuncionario");
+function criarFuncionario() {
+    const nome = document.getElementById("nome").value;
+    if (!nome) return alert("Digite o nome");
 
-select1.innerHTML="";
-select2.innerHTML="";
+    funcionario = {
+        nome: nome,
+        movimentacoes: []
+    };
 
-funcionarios.forEach(f=>{
-let opt1=document.createElement("option");
-opt1.value=f;
-opt1.textContent=f;
-select1.appendChild(opt1);
-
-let opt2=document.createElement("option");
-opt2.value=f;
-opt2.textContent=f;
-select2.appendChild(opt2);
-});
+    salvar();
+    render();
 }
 
-function addFuncionario(){
-let nome=document.getElementById("nomeFuncionario").value;
-if(!nome) return;
-funcionarios.push(nome);
-salvar();
-atualizarSelects();
-document.getElementById("nomeFuncionario").value="";
+function adicionarComissao() {
+    const valor = parseFloat(prompt("Digite o valor da comissão:"));
+    if (!valor || valor <= 0) return;
+
+    funcionario.movimentacoes.push({
+        tipo: "Comissão",
+        valor: valor,
+        data: new Date().toLocaleDateString()
+    });
+
+    salvar();
+    render();
 }
 
-function addRegistro(){
-let funcionario=document.getElementById("funcionario").value;
-let tipo=document.getElementById("tipo").value;
-let valor=parseFloat(document.getElementById("valor").value);
-let data=document.getElementById("data").value;
+function registrarPagamento() {
+    const valor = parseFloat(prompt("Digite o valor do pagamento:"));
+    if (!valor || valor <= 0) return;
 
-if(!funcionario||!valor||!data) return;
+    funcionario.movimentacoes.push({
+        tipo: "Pagamento",
+        valor: -valor,
+        data: new Date().toLocaleDateString()
+    });
 
-registros.push({funcionario,tipo,valor,data});
-salvar();
-renderTabela();
-gerarRelatorio();
-document.getElementById("valor").value="";
+    salvar();
+    render();
 }
 
-function excluir(index){
-registros.splice(index,1);
-salvar();
-renderTabela();
-gerarRelatorio();
+function zerarConta() {
+    const saldo = calcularSaldo();
+    if (saldo === 0) {
+        alert("Saldo já está zerado.");
+        return;
+    }
+
+    if (!confirm(`Tem certeza que deseja zerar o saldo de R$ ${saldo.toFixed(2)}?`)) {
+        return;
+    }
+
+    funcionario.movimentacoes.push({
+        tipo: "Quitação Automática",
+        valor: -saldo,
+        data: new Date().toLocaleDateString()
+    });
+
+    salvar();
+    render();
 }
 
-function renderTabela(){
-let tbody=document.getElementById("tabela");
-tbody.innerHTML="";
-
-registros.forEach((r,i)=>{
-let tr=document.createElement("tr");
-tr.innerHTML=`
-<td>${r.funcionario}</td>
-<td>${r.tipo}</td>
-<td>R$ ${r.valor.toFixed(2)}</td>
-<td>${r.data}</td>
-<td><button class="delete-btn" onclick="excluir(${i})">Excluir</button></td>
-`;
-tbody.appendChild(tr);
-});
+function excluirRegistro(index) {
+    if (!confirm("Deseja excluir este registro?")) return;
+    funcionario.movimentacoes.splice(index, 1);
+    salvar();
+    render();
 }
 
-function gerarRelatorio(){
-let funcionario=document.getElementById("relatorioFuncionario").value;
-if(!funcionario) return;
-
-let totalVale=0;
-let totalConsumo=0;
-let totalAdiantamento=0;
-
-registros.forEach(r=>{
-if(r.funcionario===funcionario){
-if(r.tipo==="Vale") totalVale+=r.valor;
-if(r.tipo==="Consumo") totalConsumo+=r.valor;
-if(r.tipo==="Adiantamento") totalAdiantamento+=r.valor;
-}
-});
-
-let totalGeral=totalVale+totalConsumo+totalAdiantamento;
-
-document.getElementById("relatorioResultado").innerHTML=
-`Vale: R$ ${totalVale.toFixed(2)}<br>
-Consumo: R$ ${totalConsumo.toFixed(2)}<br>
-Adiantamento: R$ ${totalAdiantamento.toFixed(2)}<br>
-<strong>Total Devido: R$ ${totalGeral.toFixed(2)}</strong>`;
+function calcularSaldo() {
+    return funcionario.movimentacoes.reduce((total, mov) => total + mov.valor, 0);
 }
 
-atualizarSelects();
-renderTabela();
+function render() {
+    if (!funcionario) return;
 
+    document.getElementById("areaFuncionario").style.display = "block";
+    document.getElementById("nomeFuncionario").innerText = funcionario.nome;
+
+    const saldo = calcularSaldo();
+    const saldoDiv = document.getElementById("saldo");
+
+    saldoDiv.innerText = "Saldo: R$ " + saldo.toFixed(2);
+
+    saldoDiv.className = "saldo " + 
+        (saldo > 0 ? "positivo" : saldo < 0 ? "negativo" : "zero");
+
+    const historicoDiv = document.getElementById("historico");
+    historicoDiv.innerHTML = "";
+
+    funcionario.movimentacoes.forEach((mov, index) => {
+        const div = document.createElement("div");
+        div.className = "registro";
+        div.innerHTML = `
+            ${mov.data} - ${mov.tipo}: R$ ${mov.valor.toFixed(2)}
+            <button onclick="excluirRegistro(${index})">Excluir</button>
+        `;
+        historicoDiv.appendChild(div);
+    });
+}
+
+if (funcionario) render();
 </script>
 
 </body>
