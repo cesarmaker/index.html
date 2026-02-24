@@ -1,1 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Gestor de Vales e Consumo</title>
+<style>
+body { font-family: Arial; background:#f4f6f9; padding:20px; }
+h1 { color:#333; }
+.container { background:#fff; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+input, select, button { padding:8px; margin:5px; }
+button { cursor:pointer; background:#007bff; color:#fff; border:none; border-radius:5px; }
+button:hover { background:#0056b3; }
+table { width:100%; border-collapse: collapse; margin-top:10px; }
+th, td { padding:8px; border-bottom:1px solid #ddd; text-align:center; }
+th { background:#007bff; color:white; }
+.total { font-weight:bold; color:red; }
+</style>
+</head>
+<body>
 
+<h1>Gestor de Funcionários</h1>
+
+<div class="container">
+<h2>Cadastrar Funcionário</h2>
+<input type="text" id="nomeFuncionario" placeholder="Nome do funcionário">
+<button onclick="adicionarFuncionario()">Adicionar</button>
+</div>
+
+<div class="container">
+<h2>Registrar Movimento</h2>
+<select id="funcionarioSelect"></select>
+<select id="tipo">
+<option value="Vale">Vale Dinheiro</option>
+<option value="Consumo">Consumo Interno</option>
+<option value="Adiantamento">Adiantamento</option>
+</select>
+<input type="number" id="valor" placeholder="Valor">
+<input type="date" id="data">
+<button onclick="registrar()">Registrar</button>
+</div>
+
+<div class="container">
+<h2>Filtro por Mês</h2>
+<input type="month" id="filtroMes" onchange="renderizarTabela()">
+</div>
+
+<div class="container">
+<h2>Resumo Geral</h2>
+<p id="resumo"></p>
+<button onclick="exportarExcel()">Exportar Excel</button>
+</div>
+
+<div class="container">
+<h2>Registros</h2>
+<table>
+<thead>
+<tr>
+<th>Funcionário</th>
+<th>Tipo</th>
+<th>Valor</th>
+<th>Data</th>
+</tr>
+</thead>
+<tbody id="tabela"></tbody>
+</table>
+</div>
+
+<script>
+let funcionarios = JSON.parse(localStorage.getItem("funcionarios")) || [];
+let registros = JSON.parse(localStorage.getItem("registros")) || [];
+
+function salvar() {
+localStorage.setItem("funcionarios", JSON.stringify(funcionarios));
+localStorage.setItem("registros", JSON.stringify(registros));
+}
+
+function adicionarFuncionario() {
+let nome = document.getElementById("nomeFuncionario").value;
+if(!nome) return;
+funcionarios.push(nome);
+salvar();
+atualizarSelect();
+document.getElementById("nomeFuncionario").value = "";
+}
+
+function atualizarSelect() {
+let select = document.getElementById("funcionarioSelect");
+select.innerHTML = "";
+funcionarios.forEach(f => {
+let option = document.createElement("option");
+option.value = f;
+option.textContent = f;
+select.appendChild(option);
+});
+}
+atualizarSelect();
+
+function registrar() {
+let funcionario = document.getElementById("funcionarioSelect").value;
+let tipo = document.getElementById("tipo").value;
+let valor = parseFloat(document.getElementById("valor").value);
+let data = document.getElementById("data").value;
+if(!funcionario || !valor || !data) return;
+
+registros.push({ funcionario, tipo, valor, data });
+salvar();
+renderizarTabela();
+document.getElementById("valor").value = "";
+}
+
+function renderizarTabela() {
+let tbody = document.getElementById("tabela");
+tbody.innerHTML = "";
+let filtro = document.getElementById("filtroMes").value;
+let totalGeral = 0;
+
+registros.forEach(r => {
+if(filtro && !r.data.startsWith(filtro)) return;
+
+totalGeral += r.valor;
+
+let tr = document.createElement("tr");
+tr.innerHTML = `
+<td>${r.funcionario}</td>
+<td>${r.tipo}</td>
+<td>R$ ${r.valor.toFixed(2)}</td>
+<td>${r.data}</td>
+`;
+tbody.appendChild(tr);
+});
+
+document.getElementById("resumo").innerHTML = 
+"Total Geral no período: <span class='total'>R$ " + totalGeral.toFixed(2) + "</span>";
+}
+
+function exportarExcel() {
+let csv = "Funcionário,Tipo,Valor,Data\n";
+registros.forEach(r => {
+csv += `${r.funcionario},${r.tipo},${r.valor},${r.data}\n`;
+});
+let blob = new Blob([csv], { type: "text/csv" });
+let link = document.createElement("a");
+link.href = URL.createObjectURL(blob);
+link.download = "relatorio.csv";
+link.click();
+}
+
+renderizarTabela();
+</script>
+
+</body>
+</html>
