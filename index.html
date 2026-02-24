@@ -2,33 +2,82 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Gestor de Vales e Consumo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor Profissional</title>
+
 <style>
-body { font-family: Arial; background:#f4f6f9; padding:20px; }
-h1 { color:#333; }
-.container { background:#fff; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
-input, select, button { padding:8px; margin:5px; }
-button { cursor:pointer; background:#007bff; color:#fff; border:none; border-radius:5px; }
-button:hover { background:#0056b3; }
-table { width:100%; border-collapse: collapse; margin-top:10px; }
-th, td { padding:8px; border-bottom:1px solid #ddd; text-align:center; }
-th { background:#007bff; color:white; }
-.total { font-weight:bold; color:red; }
+body{
+font-family:Arial;
+background:#f4f6f9;
+padding:20px;
+margin:0;
+}
+
+h1{
+text-align:center;
+}
+
+.card{
+background:#fff;
+padding:15px;
+margin-bottom:20px;
+border-radius:10px;
+box-shadow:0 5px 15px rgba(0,0,0,0.1);
+}
+
+input,select,button{
+padding:8px;
+margin:5px 0;
+width:100%;
+}
+
+button{
+background:#007bff;
+color:#fff;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+button:hover{
+opacity:0.9;
+}
+
+.delete-btn{
+background:red;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:14px;
+}
+
+th,td{
+border-bottom:1px solid #ddd;
+padding:8px;
+text-align:center;
+}
+
+th{
+background:#007bff;
+color:white;
+}
 </style>
 </head>
 <body>
 
 <h1>Gestor de Funcionários</h1>
 
-<div class="container">
-<h2>Cadastrar Funcionário</h2>
-<input type="text" id="nomeFuncionario" placeholder="Nome do funcionário">
-<button onclick="adicionarFuncionario()">Adicionar</button>
+<div class="card">
+<h3>Cadastrar Funcionário</h3>
+<input type="text" id="nomeFuncionario" placeholder="Nome">
+<button onclick="addFuncionario()">Adicionar</button>
 </div>
 
-<div class="container">
-<h2>Registrar Movimento</h2>
-<select id="funcionarioSelect"></select>
+<div class="card">
+<h3>Registrar Movimento</h3>
+<select id="funcionario"></select>
 <select id="tipo">
 <option value="Vale">Vale Dinheiro</option>
 <option value="Consumo">Consumo Interno</option>
@@ -36,22 +85,17 @@ th { background:#007bff; color:white; }
 </select>
 <input type="number" id="valor" placeholder="Valor">
 <input type="date" id="data">
-<button onclick="registrar()">Registrar</button>
+<button onclick="addRegistro()">Registrar</button>
 </div>
 
-<div class="container">
-<h2>Filtro por Mês</h2>
-<input type="month" id="filtroMes" onchange="renderizarTabela()">
+<div class="card">
+<h3>Relatório Individual</h3>
+<select id="relatorioFuncionario" onchange="gerarRelatorio()"></select>
+<p id="relatorioResultado"></p>
 </div>
 
-<div class="container">
-<h2>Resumo Geral</h2>
-<p id="resumo"></p>
-<button onclick="exportarExcel()">Exportar Excel</button>
-</div>
-
-<div class="container">
-<h2>Registros</h2>
+<div class="card">
+<h3>Registros</h3>
 <table>
 <thead>
 <tr>
@@ -59,6 +103,7 @@ th { background:#007bff; color:white; }
 <th>Tipo</th>
 <th>Valor</th>
 <th>Data</th>
+<th>Ação</th>
 </tr>
 </thead>
 <tbody id="tabela"></tbody>
@@ -66,86 +111,111 @@ th { background:#007bff; color:white; }
 </div>
 
 <script>
+
 let funcionarios = JSON.parse(localStorage.getItem("funcionarios")) || [];
 let registros = JSON.parse(localStorage.getItem("registros")) || [];
 
-function salvar() {
-localStorage.setItem("funcionarios", JSON.stringify(funcionarios));
-localStorage.setItem("registros", JSON.stringify(registros));
+function salvar(){
+localStorage.setItem("funcionarios",JSON.stringify(funcionarios));
+localStorage.setItem("registros",JSON.stringify(registros));
 }
 
-function adicionarFuncionario() {
-let nome = document.getElementById("nomeFuncionario").value;
+function atualizarSelects(){
+let select1 = document.getElementById("funcionario");
+let select2 = document.getElementById("relatorioFuncionario");
+
+select1.innerHTML="";
+select2.innerHTML="";
+
+funcionarios.forEach(f=>{
+let opt1=document.createElement("option");
+opt1.value=f;
+opt1.textContent=f;
+select1.appendChild(opt1);
+
+let opt2=document.createElement("option");
+opt2.value=f;
+opt2.textContent=f;
+select2.appendChild(opt2);
+});
+}
+
+function addFuncionario(){
+let nome=document.getElementById("nomeFuncionario").value;
 if(!nome) return;
 funcionarios.push(nome);
 salvar();
-atualizarSelect();
-document.getElementById("nomeFuncionario").value = "";
+atualizarSelects();
+document.getElementById("nomeFuncionario").value="";
 }
 
-function atualizarSelect() {
-let select = document.getElementById("funcionarioSelect");
-select.innerHTML = "";
-funcionarios.forEach(f => {
-let option = document.createElement("option");
-option.value = f;
-option.textContent = f;
-select.appendChild(option);
-});
-}
-atualizarSelect();
+function addRegistro(){
+let funcionario=document.getElementById("funcionario").value;
+let tipo=document.getElementById("tipo").value;
+let valor=parseFloat(document.getElementById("valor").value);
+let data=document.getElementById("data").value;
 
-function registrar() {
-let funcionario = document.getElementById("funcionarioSelect").value;
-let tipo = document.getElementById("tipo").value;
-let valor = parseFloat(document.getElementById("valor").value);
-let data = document.getElementById("data").value;
-if(!funcionario || !valor || !data) return;
+if(!funcionario||!valor||!data) return;
 
-registros.push({ funcionario, tipo, valor, data });
+registros.push({funcionario,tipo,valor,data});
 salvar();
-renderizarTabela();
-document.getElementById("valor").value = "";
+renderTabela();
+gerarRelatorio();
+document.getElementById("valor").value="";
 }
 
-function renderizarTabela() {
-let tbody = document.getElementById("tabela");
-tbody.innerHTML = "";
-let filtro = document.getElementById("filtroMes").value;
-let totalGeral = 0;
+function excluir(index){
+registros.splice(index,1);
+salvar();
+renderTabela();
+gerarRelatorio();
+}
 
-registros.forEach(r => {
-if(filtro && !r.data.startsWith(filtro)) return;
+function renderTabela(){
+let tbody=document.getElementById("tabela");
+tbody.innerHTML="";
 
-totalGeral += r.valor;
-
-let tr = document.createElement("tr");
-tr.innerHTML = `
+registros.forEach((r,i)=>{
+let tr=document.createElement("tr");
+tr.innerHTML=`
 <td>${r.funcionario}</td>
 <td>${r.tipo}</td>
 <td>R$ ${r.valor.toFixed(2)}</td>
 <td>${r.data}</td>
+<td><button class="delete-btn" onclick="excluir(${i})">Excluir</button></td>
 `;
 tbody.appendChild(tr);
 });
-
-document.getElementById("resumo").innerHTML = 
-"Total Geral no período: <span class='total'>R$ " + totalGeral.toFixed(2) + "</span>";
 }
 
-function exportarExcel() {
-let csv = "Funcionário,Tipo,Valor,Data\n";
-registros.forEach(r => {
-csv += `${r.funcionario},${r.tipo},${r.valor},${r.data}\n`;
+function gerarRelatorio(){
+let funcionario=document.getElementById("relatorioFuncionario").value;
+if(!funcionario) return;
+
+let totalVale=0;
+let totalConsumo=0;
+let totalAdiantamento=0;
+
+registros.forEach(r=>{
+if(r.funcionario===funcionario){
+if(r.tipo==="Vale") totalVale+=r.valor;
+if(r.tipo==="Consumo") totalConsumo+=r.valor;
+if(r.tipo==="Adiantamento") totalAdiantamento+=r.valor;
+}
 });
-let blob = new Blob([csv], { type: "text/csv" });
-let link = document.createElement("a");
-link.href = URL.createObjectURL(blob);
-link.download = "relatorio.csv";
-link.click();
+
+let totalGeral=totalVale+totalConsumo+totalAdiantamento;
+
+document.getElementById("relatorioResultado").innerHTML=
+`Vale: R$ ${totalVale.toFixed(2)}<br>
+Consumo: R$ ${totalConsumo.toFixed(2)}<br>
+Adiantamento: R$ ${totalAdiantamento.toFixed(2)}<br>
+<strong>Total Devido: R$ ${totalGeral.toFixed(2)}</strong>`;
 }
 
-renderizarTabela();
+atualizarSelects();
+renderTabela();
+
 </script>
 
 </body>
