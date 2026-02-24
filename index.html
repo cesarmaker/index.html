@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Gestor de Funcionários</title>
+<title>Gestor de Funcionário</title>
 <style>
 body {
     font-family: Arial;
@@ -41,7 +41,7 @@ input {
 <body>
 
 <div class="container">
-    <h2>Gestor de Funcionário</h2>
+    <h2>Controle de Vale / Funcionário</h2>
 
     <input type="text" id="nome" placeholder="Nome do Funcionário">
     <button onclick="criarFuncionario()">Criar Funcionário</button>
@@ -52,11 +52,11 @@ input {
         <h3 id="nomeFuncionario"></h3>
         <div class="saldo" id="saldo"></div>
 
-        <button onclick="adicionarComissao()">Adicionar Comissão</button>
+        <button onclick="adicionarVale()">Vale / Adiantamento</button>
         <button onclick="registrarPagamento()">Registrar Pagamento</button>
         <button onclick="zerarConta()">Zerar Conta</button>
 
-        <h4>Histórico</h4>
+        <h4>Histórico Individual</h4>
         <div id="historico"></div>
     </div>
 </div>
@@ -81,12 +81,12 @@ function criarFuncionario() {
     render();
 }
 
-function adicionarComissao() {
-    const valor = parseFloat(prompt("Digite o valor da comissão:"));
+function adicionarVale() {
+    const valor = parseFloat(prompt("Digite o valor do vale / adiantamento:"));
     if (!valor || valor <= 0) return;
 
     funcionario.movimentacoes.push({
-        tipo: "Comissão",
+        tipo: "Vale / Adiantamento",
         valor: valor,
         data: new Date().toLocaleDateString()
     });
@@ -150,10 +150,10 @@ function render() {
     const saldo = calcularSaldo();
     const saldoDiv = document.getElementById("saldo");
 
-    saldoDiv.innerText = "Saldo: R$ " + saldo.toFixed(2);
+    saldoDiv.innerText = "Saldo Atual: R$ " + saldo.toFixed(2);
 
     saldoDiv.className = "saldo " + 
-        (saldo > 0 ? "positivo" : saldo < 0 ? "negativo" : "zero");
+        (saldo > 0 ? "negativo" : saldo < 0 ? "positivo" : "zero");
 
     const historicoDiv = document.getElementById("historico");
     historicoDiv.innerHTML = "";
