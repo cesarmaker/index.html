@@ -2,77 +2,98 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Controle de Funcionários</title>
+<title>Controle Profissional de Funcionários</title>
 <style>
 body {
     font-family: Arial;
-    background: #f4f4f4;
+    background: #eef2f7;
+    margin: 0;
     padding: 20px;
 }
 .container {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    max-width: 900px;
-    margin: auto;
     display: flex;
     gap: 20px;
 }
 .lista {
     width: 30%;
-    border-right: 1px solid #ddd;
-    padding-right: 10px;
-}
-.lista button {
-    width: 100%;
-    margin-bottom: 5px;
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 .detalhes {
     width: 70%;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+input, button {
+    padding: 8px;
+    margin: 5px 0;
 }
 button {
-    padding: 8px;
     cursor: pointer;
 }
-input {
-    padding: 6px;
-    width: 100%;
-    margin-bottom: 5px;
+.func-item {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
 }
+.func-item button {
+    margin-left: 5px;
+}
+.negativo { color: red; font-weight: bold; }
+.positivo { color: green; font-weight: bold; }
+.zero { color: black; font-weight: bold; }
 .registro {
     border-bottom: 1px solid #ddd;
     padding: 5px 0;
 }
-.saldo {
-    font-size: 20px;
-    font-weight: bold;
+.top-bar {
+    margin-bottom: 10px;
 }
-.negativo { color: red; }
-.positivo { color: green; }
-.zero { color: black; }
 </style>
 </head>
 <body>
+
+<h2>Controle Profissional de Funcionários</h2>
 
 <div class="container">
 
 <div class="lista">
     <h3>Funcionários</h3>
-    <input type="text" id="nome" placeholder="Novo Funcionário">
+
+    <input type="text" id="busca" placeholder="Buscar funcionário..." oninput="renderLista()">
+
+    <input type="text" id="nome" placeholder="Novo funcionário">
     <button onclick="criarFuncionario()">Criar</button>
+
     <hr>
     <div id="listaFuncionarios"></div>
+
+    <hr>
+    <h4>Relatório Geral</h4>
+    <div id="relatorioGeral"></div>
 </div>
 
 <div class="detalhes" id="areaFuncionario" style="display:none;">
     <h3 id="nomeFuncionario"></h3>
-    <div class="saldo" id="saldo"></div>
+    <div id="saldo" class="zero"></div>
 
     <button onclick="adicionarVale()">Vale / Adiantamento</button>
     <button onclick="registrarPagamento()">Registrar Pagamento</button>
     <button onclick="zerarConta()">Zerar Conta</button>
 
-    <h4>Histórico Individual</h4>
+    <hr>
+
+    <div class="top-bar">
+        <label>Filtrar por período:</label><br>
+        De <input type="date" id="dataInicio">
+        Até <input type="date" id="dataFim">
+        <button onclick="renderDetalhes()">Filtrar</button>
+    </div>
+
+    <h4>Histórico</h4>
     <div id="historico"></div>
 </div>
 
@@ -90,14 +111,19 @@ function criarFuncionario() {
     const nome = document.getElementById("nome").value;
     if (!nome) return alert("Digite o nome");
 
-    funcionarios.push({
-        nome: nome,
-        movimentacoes: []
-    });
-
+    funcionarios.push({ nome, movimentacoes: [] });
     document.getElementById("nome").value = "";
     salvar();
     renderLista();
+}
+
+function excluirFuncionario(index) {
+    if (!confirm("Deseja excluir este funcionário?")) return;
+    funcionarios.splice(index, 1);
+    funcionarioAtual = null;
+    salvar();
+    renderLista();
+    document.getElementById("areaFuncionario").style.display = "none";
 }
 
 function selecionarFuncionario(index) {
@@ -105,105 +131,139 @@ function selecionarFuncionario(index) {
     renderDetalhes();
 }
 
+function calcularSaldo(func) {
+    return func.movimentacoes.reduce((t, m) => t + m.valor, 0);
+}
+
 function adicionarVale() {
-    const valor = parseFloat(prompt("Digite o valor do vale:"));
+    const valor = parseFloat(prompt("Valor do vale:"));
     if (!valor || valor <= 0) return;
 
     funcionarios[funcionarioAtual].movimentacoes.push({
         tipo: "Vale / Adiantamento",
-        valor: valor,
-        data: new Date().toLocaleDateString()
+        valor: -valor,
+        data: new Date().toISOString().split("T")[0]
     });
 
     salvar();
     renderDetalhes();
+    renderLista();
 }
 
 function registrarPagamento() {
-    const valor = parseFloat(prompt("Digite o valor do pagamento:"));
+    const valor = parseFloat(prompt("Valor do pagamento:"));
     if (!valor || valor <= 0) return;
 
     funcionarios[funcionarioAtual].movimentacoes.push({
         tipo: "Pagamento",
-        valor: -valor,
-        data: new Date().toLocaleDateString()
+        valor: valor,
+        data: new Date().toISOString().split("T")[0]
     });
 
     salvar();
     renderDetalhes();
+    renderLista();
 }
 
 function zerarConta() {
-    const saldo = calcularSaldo();
-    if (saldo === 0) {
-        alert("Saldo já está zerado.");
-        return;
-    }
+    const saldo = calcularSaldo(funcionarios[funcionarioAtual]);
+    if (saldo === 0) return alert("Saldo já está zerado.");
 
-    if (!confirm(`Tem certeza que deseja zerar o saldo de R$ ${saldo.toFixed(2)}?`)) {
-        return;
-    }
+    if (!confirm(`Deseja zerar o saldo de R$ ${saldo.toFixed(2)}?`)) return;
 
     funcionarios[funcionarioAtual].movimentacoes.push({
         tipo: "Quitação Automática",
         valor: -saldo,
-        data: new Date().toLocaleDateString()
+        data: new Date().toISOString().split("T")[0]
     });
 
     salvar();
     renderDetalhes();
+    renderLista();
 }
 
 function excluirRegistro(index) {
-    if (!confirm("Deseja excluir este registro?")) return;
+    if (!confirm("Excluir registro?")) return;
     funcionarios[funcionarioAtual].movimentacoes.splice(index, 1);
     salvar();
     renderDetalhes();
-}
-
-function calcularSaldo() {
-    return funcionarios[funcionarioAtual].movimentacoes
-        .reduce((total, mov) => total + mov.valor, 0);
+    renderLista();
 }
 
 function renderLista() {
+    const busca = document.getElementById("busca").value.toLowerCase();
     const listaDiv = document.getElementById("listaFuncionarios");
     listaDiv.innerHTML = "";
 
-    funcionarios.forEach((func, index) => {
-        const btn = document.createElement("button");
-        btn.innerText = func.nome;
-        btn.onclick = () => selecionarFuncionario(index);
-        listaDiv.appendChild(btn);
+    let listaOrdenada = [...funcionarios]
+        .map((f, i) => ({ ...f, index: i, saldo: calcularSaldo(f) }))
+        .filter(f => f.nome.toLowerCase().includes(busca))
+        .sort((a, b) => a.saldo - b.saldo); // maior dívida primeiro
+
+    listaOrdenada.forEach(f => {
+        const div = document.createElement("div");
+        div.className = "func-item";
+
+        const cor = f.saldo < 0 ? "negativo" :
+                    f.saldo > 0 ? "positivo" : "zero";
+
+        div.innerHTML = `
+            <strong onclick="selecionarFuncionario(${f.index})" style="cursor:pointer">
+                ${f.nome}
+            </strong><br>
+            <span class="${cor}">Saldo: R$ ${f.saldo.toFixed(2)}</span>
+            <br>
+            <button onclick="excluirFuncionario(${f.index})">Excluir</button>
+        `;
+        listaDiv.appendChild(div);
     });
+
+    renderRelatorioGeral();
 }
 
 function renderDetalhes() {
     if (funcionarioAtual === null) return;
 
+    const func = funcionarios[funcionarioAtual];
     document.getElementById("areaFuncionario").style.display = "block";
-    document.getElementById("nomeFuncionario").innerText = funcionarios[funcionarioAtual].nome;
+    document.getElementById("nomeFuncionario").innerText = func.nome;
 
-    const saldo = calcularSaldo();
+    const saldo = calcularSaldo(func);
     const saldoDiv = document.getElementById("saldo");
 
     saldoDiv.innerText = "Saldo Atual: R$ " + saldo.toFixed(2);
+    saldoDiv.className = saldo < 0 ? "negativo" :
+                         saldo > 0 ? "positivo" : "zero";
 
-    saldoDiv.className = "saldo " +
-        (saldo > 0 ? "negativo" : saldo < 0 ? "positivo" : "zero");
+    const inicio = document.getElementById("dataInicio").value;
+    const fim = document.getElementById("dataFim").value;
 
     const historicoDiv = document.getElementById("historico");
     historicoDiv.innerHTML = "";
 
-    funcionarios[funcionarioAtual].movimentacoes.forEach((mov, index) => {
+    func.movimentacoes.forEach((mov, i) => {
+        if (inicio && mov.data < inicio) return;
+        if (fim && mov.data > fim) return;
+
         const div = document.createElement("div");
         div.className = "registro";
         div.innerHTML = `
             ${mov.data} - ${mov.tipo}: R$ ${mov.valor.toFixed(2)}
-            <button onclick="excluirRegistro(${index})">Excluir</button>
+            <button onclick="excluirRegistro(${i})">Excluir</button>
         `;
         historicoDiv.appendChild(div);
     });
+}
+
+function renderRelatorioGeral() {
+    const total = funcionarios.reduce((t, f) => t + calcularSaldo(f), 0);
+    const div = document.getElementById("relatorioGeral");
+    div.innerHTML = `
+        Total Geral: 
+        <span class="${total < 0 ? "negativo" : total > 0 ? "positivo" : "zero"}">
+        R$ ${total.toFixed(2)}
+        </span>
+    `;
 }
 
 renderLista();
